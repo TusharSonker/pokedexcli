@@ -86,7 +86,7 @@ go test ./...
 5. Open a Pull Request
 
 ### License
-MIT (add a LICENSE file if publishing formally)
+MIT
 
 ### Disclaimer
 This project uses the public PokéAPI. Pokémon © Nintendo / Game Freak / Creatures. This is an educational CLI tool.
