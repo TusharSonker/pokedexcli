@@ -1,4 +1,4 @@
- package pokeapi
+package pokeapi
 
 type Pokemon struct {
 	Abilities []struct {

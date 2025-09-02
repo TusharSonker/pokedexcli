@@ -1,101 +1,50 @@
-package pokeapi
+package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
+	"log"
 )
 
-func (c *Client) ListLocationAreas(pageUrl *string) (LocationAreasResp, error) {
-	endpoint := "/location-area"
-	fullUrl := baseURl + endpoint
-	if pageUrl != nil {
-		fullUrl = *pageUrl
-	}
-
-	data, ok := c.cache.Get(fullUrl)
-	if ok {
-		fmt.Println("Cache Hit!!!!")
-		locAreaResp := LocationAreasResp{}
-
-		err := json.Unmarshal(data, &locAreaResp)
-		if err != nil {
-			return LocationAreasResp{}, err
-		}
-		return locAreaResp, nil
-	}
-	fmt.Println("Cache Miss!!!")
-
-	req, err := http.NewRequest("GET", fullUrl, nil)
+// callbackMap lists the next page of location areas using cfg.nextLocURL.
+// On first invocation (nil nextLocURL) it fetches the first page.
+func callbackMap(cfg *config, args ...string) error {
+	resp, err := cfg.pokeapiClient.ListLocationAreas(cfg.nextLocURL)
 	if err != nil {
-		return LocationAreasResp{}, nil
+		log.Println("error fetching location areas:", err)
+		return err
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return LocationAreasResp{}, nil
-	}
-	defer resp.Body.Close()
+	// Update pagination pointers.
+	cfg.nextLocURL = resp.Next
+	cfg.prevLocURL = resp.Previous
 
-	if resp.StatusCode > 399 {
-		return LocationAreasResp{}, fmt.Errorf("bad status code: %v", resp.StatusCode)
+	fmt.Println("Location Areas:")
+	for _, area := range resp.Results {
+		fmt.Printf("  -- %s\n", area.Name)
 	}
-	data, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return LocationAreasResp{}, err
+	if cfg.nextLocURL == nil {
+		fmt.Println("(end of list)")
 	}
-	locAreaResp := LocationAreasResp{}
-
-	err = json.Unmarshal(data, &locAreaResp)
-	if err != nil {
-		return LocationAreasResp{}, err
-	}
-	c.cache.Add(fullUrl, data)
-	return locAreaResp, nil
-
+	return nil
 }
 
-func (c *Client) GetLocationAres(locationAreaName string) (LocationArea, error) {
-	endpoint := "/location-area/" + locationAreaName
-	fullUrl := baseURl + endpoint
-
-	data, ok := c.cache.Get(fullUrl)
-	if ok {
-		fmt.Println("Cache Hit!!!!")
-		locAreaResp := LocationArea{}
-
-		err := json.Unmarshal(data, &locAreaResp)
-		if err != nil {
-			return LocationArea{}, err
-		}
-		return locAreaResp, nil
+// callbackMapb goes backwards (previous page). If no previous page it returns an error.
+func callbackMapb(cfg *config, args ...string) error {
+	if cfg.prevLocURL == nil {
+		return errors.New("you're on the first page")
 	}
-	fmt.Println("Cache Miss!!!")
-
-	req, err := http.NewRequest("GET", fullUrl, nil)
+	resp, err := cfg.pokeapiClient.ListLocationAreas(cfg.prevLocURL)
 	if err != nil {
-		return LocationArea{}, nil
+		log.Println("error fetching previous location areas:", err)
+		return err
 	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return LocationArea{}, nil
-	}
-	defer resp.Body.Close()
+	// After moving backwards, set pagination pointers based on the response.
+	cfg.nextLocURL = resp.Next
+	cfg.prevLocURL = resp.Previous
 
-	if resp.StatusCode > 399 {
-		return LocationArea{}, fmt.Errorf("bad status code: %v", resp.StatusCode)
+	fmt.Println("Location Areas:")
+	for _, area := range resp.Results {
+		fmt.Printf("  -- %s\n", area.Name)
 	}
-	data, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return LocationArea{}, err
-	}
-	locAreaResp := LocationArea{}
-
-	err = json.Unmarshal(data, &locAreaResp)
-	if err != nil {
-		return LocationArea{}, err
-	}
-	c.cache.Add(fullUrl, data)
-	return locAreaResp, nil
-
+	return nil
 }
