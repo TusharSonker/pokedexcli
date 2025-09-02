@@ -22,3 +22,4 @@ func NewClient(cacheInterval time.Duration) Client {
 		},
 	}
 }
+
